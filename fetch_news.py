@@ -7,6 +7,21 @@ from datetime import datetime, timedelta, timezone
 
 import feedparser
 
+def load_env(path=".env"):
+    """ローカル実行用: .env の KEY=VALUE を環境変数に読み込む(既存値は上書きしない)。"""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                if "ここに" not in v:  # プレースホルダのままなら無視
+                    os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+
+
+load_env()
+
 MODEL = "claude-sonnet-5-5"
 PER_CATEGORY = 8        # 各ジャンルに載せる件数
 CANDIDATES = 40         # 各ジャンルでClaudeに渡す候補数
@@ -88,7 +103,7 @@ def curate(category, items):
             model=MODEL, max_tokens=4000,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = resp.content[0].text
+        text = "".join(b.text for b in resp.content if b.type == "text")
         picks = json.loads(text[text.index("["): text.rindex("]") + 1])
         out = []
         for p in picks[:PER_CATEGORY]:
